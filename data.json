@@ -1,0 +1,112 @@
+{
+  "users": [
+    {
+      "id": "admin-1",
+      "email": "admin@cloud.neduet.edu.pk",
+      "passwordHash": "$2b$10$.qceHeB8W6iAbWojSRz0l.wDI9SWdd4/jglgd13dAXCfKPpqPqxk6",
+      "role": "admin",
+      "name": "System Admin",
+      "status": "Active",
+      "createdAt": "2026-04-23T00:00:00.000Z"
+    },
+    {
+      "id": "admin-2",
+      "email": "hod@cloud.neduet.edu.pk",
+      "passwordHash": "$2a$10$7vM/7cR1P0yK9z5vK.uH/uO8vEw3Pz8ZkCzkI7p8Y/QWkY8uVfL6y",
+      "role": "admin",
+      "name": "HOD Admin",
+      "status": "Active",
+      "createdAt": "2026-04-23T00:00:00.000Z"
+    },
+    {
+      "id": "student-1",
+      "rollNumber": "21K-3456",
+      "passwordHash": "$2b$10$htXMrFJsc3msAkiVRG4FZuEeBjzGvC57LvPNdxBQSsi6dR220JWNW",
+      "name": "Ali Hassan",
+      "department": "CS",
+      "role": "student",
+      "status": "Active",
+      "createdAt": "2026-04-23T00:00:00.000Z"
+    },
+    {
+      "id": "student-2",
+      "rollNumber": "22K-1234",
+      "passwordHash": "$2a$10$7vM/7cR1P0yK9z5vK.uH/uO8vEw3Pz8ZkCzkI7p8Y/QWkY8uVfL6y",
+      "name": "Sara Khan",
+      "department": "EE",
+      "role": "student",
+      "status": "Active",
+      "createdAt": "2026-04-23T00:00:00.000Z"
+    },
+    {
+      "id": "a6638e51-a2e9-4cc5-876b-128c50014fac",
+      "name": "a",
+      "rollNumber": "24S-0015",
+      "department": "CS",
+      "role": "student",
+      "passwordHash": "$2b$10$kb3u5apbncjlO0zUtLSSBeT1N2AXmTLFu9uMxSA5LsXUnqRkVPVrO",
+      "status": "Active",
+      "createdAt": "2026-04-23T19:45:03.230Z"
+    },
+    {
+      "id": "ffd8478d-f3d8-4522-85af-ec33ddb9a294",
+      "name": "ayesha ",
+      "rollNumber": "SE-24015",
+      "department": "SE",
+      "role": "student",
+      "passwordHash": "$2b$10$htXMrFJsc3msAkiVRG4FZuEeBjzGvC57LvPNdxBQSsi6dR220JWNW",
+      "status": "Active",
+      "createdAt": "2026-04-23T20:09:50.387Z"
+    }
+  ],
+  "reports": [
+    {
+      "id": "rep-1",
+      "userId": "student-1",
+      "type": "lost",
+      "itemName": "Laptop Charger",
+      "category": "Electronics",
+      "description": "Black Dell charger left in Lab 3.",
+      "date": "2026-04-22",
+      "location": "Main Campus - CS Department",
+      "status": "Pending",
+      "createdAt": "2026-04-22T10:00:00.000Z"
+    },
+    {
+      "id": "rep-2",
+      "userId": "student-2",
+      "type": "found",
+      "itemName": "Blue Water Bottle",
+      "category": "Personal Items",
+      "description": "Found a blue Tupperware bottle near the cafeteria.",
+      "date": "2026-04-23",
+      "location": "Cafeteria",
+      "status": "Under Review",
+      "createdAt": "2026-04-23T09:00:00.000Z"
+    },
+    {
+      "id": "ce1a9cdc-5f96-4bbf-968f-afcbc874b39a",
+      "userId": "ffd8478d-f3d8-4522-85af-ec33ddb9a294",
+      "userName": "ayesha ",
+      "type": "lost",
+      "itemName": "bottle",
+      "category": "Personal Items",
+      "description": "pink clrd",
+      "date": "2026-04-23",
+      "location": "library",
+      "imageUrl": "/uploads/9734c64c-11cf-4b4c-bab5-7fdaa570756d.png",
+      "status": "Pending",
+      "createdAt": "2026-04-23T20:10:23.553Z"
+    }
+  ],
+  "matches": [
+    {
+      "id": "34d27ca0-9e25-4012-8d16-d5ec16652d63",
+      "lostReportId": "ce1a9cdc-5f96-4bbf-968f-afcbc874b39a",
+      "foundReportId": "rep-2",
+      "status": "Suggested",
+      "createdAt": "2026-04-23T20:10:23.553Z"
+    }
+  ],
+  "notifications": []
+}
