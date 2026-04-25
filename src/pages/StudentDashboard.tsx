@@ -2,17 +2,45 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { PlusCircle, Search, Clock, AlertCircle, RefreshCw } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getAuthUser } from '../lib/auth';
+import { useFirebase } from '../lib/FirebaseProvider';
 import { StatsCard } from '../components/StatsCard';
 import { Report } from '../types';
 import { StatusBadge } from '../components/StatusBadge';
 import { formatDate, cn } from '../lib/utils';
+import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { handleFirestoreError, OperationType } from '../lib/firestoreUtils';
 
 export default function StudentDashboard() {
-  const user = getAuthUser();
+  const { user } = useFirebase();
   const navigate = useNavigate();
   const [reports, setReports] = useState<Report[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const q = query(
+      collection(db, 'reports'),
+      where('userId', '==', user.id),
+      orderBy('createdAt', 'desc'),
+      limit(10)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const reportsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Report[];
+      setReports(reportsData);
+      setIsLoading(false);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'reports');
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   const stats = [
     { label: 'Total Reports', value: reports.length, icon: Clock, color: 'purple' as const },
@@ -20,24 +48,6 @@ export default function StudentDashboard() {
     { label: 'Matched', value: reports.filter(r => r.status === 'Matched').length, icon: RefreshCw, color: 'green' as const },
     { label: 'Resolved', value: reports.filter(r => r.status === 'Resolved').length, icon: PlusCircle, color: 'blue' as const },
   ];
-
-  const fetchReports = async () => {
-    try {
-      const res = await fetch('/api/reports', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-      const data = await res.json();
-      setReports(data.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchReports();
-  }, []);
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8">

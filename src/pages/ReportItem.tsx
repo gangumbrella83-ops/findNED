@@ -3,12 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Tag, MapPin, Calendar, FileText, Upload, X, ArrowLeft, Send } from 'lucide-react';
 import { useToast } from '../lib/toastStore';
+import { useFirebase } from '../lib/FirebaseProvider';
+import { collection, addDoc, serverTimestamp, getDocs, query, where } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { handleFirestoreError, OperationType } from '../lib/firestoreUtils';
 
 interface ReportItemProps {
   type: 'lost' | 'found';
 }
 
 export default function ReportItem({ type }: ReportItemProps) {
+  const { user } = useFirebase();
   const [formData, setFormData] = useState({
     itemName: '',
     category: '',
@@ -25,36 +30,60 @@ export default function ReportItem({ type }: ReportItemProps) {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        addToast('Image size must be less than 5MB', 'error');
+      if (file.size > 1 * 1024 * 1024) {
+        addToast('Image size must be less than 1MB for direct database storage', 'error');
         return;
       }
       setImage(file);
-      setPreview(URL.createObjectURL(file));
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return;
     setIsLoading(true);
 
-    const data = new FormData();
-    data.append('type', type);
-    Object.entries(formData).forEach(([key, value]) => data.append(key, value as string));
-    if (image) data.append('image', image);
-
     try {
-      const res = await fetch('/api/reports', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-        body: data,
-      });
+      const newReportData = {
+        userId: user.id,
+        userName: user.name,
+        type,
+        ...formData,
+        imageUrl: preview || undefined, // Small base64 for demo
+        status: 'Pending',
+        createdAt: serverTimestamp(),
+      };
 
-      if (!res.ok) throw new Error('Failed to submit report');
+      const reportRef = await addDoc(collection(db, 'reports'), newReportData);
+      
+      // Auto-matching logic (Client-side trigger)
+      const oppositeType = type === 'lost' ? 'found' : 'lost';
+      const q = query(
+        collection(db, 'reports'),
+        where('type', '==', oppositeType),
+        where('category', '==', formData.category)
+      );
+      
+      const potentialMatches = await getDocs(q);
+      for (const sameCatDoc of potentialMatches.docs) {
+        // Simple name similarity or match category
+        await addDoc(collection(db, 'matches'), {
+          lostReportId: type === 'lost' ? reportRef.id : sameCatDoc.id,
+          foundReportId: type === 'found' ? reportRef.id : sameCatDoc.id,
+          status: 'Suggested',
+          createdAt: serverTimestamp(),
+        });
+      }
 
       addToast(`Item reported as ${type} successfully!`, 'success');
       navigate('/my-reports');
     } catch (err: any) {
+      handleFirestoreError(err, OperationType.CREATE, 'reports');
       addToast(err.message, 'error');
     } finally {
       setIsLoading(false);

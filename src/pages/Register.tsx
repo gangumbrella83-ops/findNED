@@ -1,59 +1,64 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { UserPlus, User, Hash, School, Lock, ArrowRight, AlertCircle } from 'lucide-react';
-import { setAuthToken, setAuthUser } from '../lib/auth';
+import { UserPlus, User, Hash, School, Lock, ArrowRight, AlertCircle, ShieldCheck } from 'lucide-react';
 import { useToast } from '../lib/toastStore';
+import { useFirebase } from '../lib/FirebaseProvider';
 
 export default function Register() {
   const [formData, setFormData] = useState({
     name: '',
     rollNumber: '',
     department: '',
-    password: '',
-    confirmPassword: '',
+    securityKey: '',
+    confirmKey: '',
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const { addToast } = useToast();
+  const { signup, user } = useFirebase();
 
-  const rollNumberRegex = /^[A-Z]{2}-\d{5}$/;
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
-    if (!rollNumberRegex.test(formData.rollNumber)) {
-      setError('Invalid Roll Number format. Use e.g. SE-24015');
+    if (formData.securityKey !== formData.confirmKey) {
+      setError('Security keys do not match');
       setIsLoading(false);
       return;
     }
 
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+    if (formData.securityKey.length < 6) {
+      setError('Security key must be at least 6 characters');
       setIsLoading(false);
       return;
     }
 
     try {
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+      await signup({
+        name: formData.name,
+        rollNumber: formData.rollNumber,
+        department: formData.department,
+        securityKey: formData.securityKey
       });
-      const data = await res.json();
-
-      if (!res.ok) throw new Error(data.message || 'Registration failed');
-
-      setAuthToken(data.token);
-      setAuthUser(data.user);
-      addToast(`Welcome to NEDUET Portal, ${data.user.name}!`, 'success');
-      navigate('/dashboard');
+      addToast(`Welcome to findNED, ${formData.name}!`, 'success');
     } catch (err: any) {
-      setError(err.message);
-      addToast(err.message, 'error');
+      let msg = err.message;
+      if (err.code === 'auth/operation-not-allowed') {
+        msg = 'Email/Password Authentication is not supported.';
+      } else if (err.code === 'auth/network-request-failed') {
+        msg = 'Network request failed. Please check your internet connection or Firebase configuration.';
+      }
+      setError(msg);
+      addToast(msg, 'error');
     } finally {
       setIsLoading(false);
     }
@@ -79,7 +84,7 @@ export default function Register() {
             System.
           </h1>
           <p className="text-slate-400 text-lg font-medium max-w-md leading-relaxed">
-            Register your student account to join the network and help the community keep the campus organized and lost-item-free.
+            Register your student account to join the network and help the community recover lost belongings on campus.
           </p>
         </div>
         
@@ -94,7 +99,6 @@ export default function Register() {
           </div>
         </div>
 
-        {/* Abstract background mesh */}
         <div className="absolute top-0 right-0 w-full h-full opacity-30 pointer-events-none">
           <div className="absolute top-[-10%] right-[-10%] w-[60%] h-[60%] bg-primary/20 rounded-full blur-[100px]" />
           <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-500/10 rounded-full blur-[80px]" />
@@ -110,7 +114,7 @@ export default function Register() {
         >
           <div className="mb-10 text-center lg:text-left">
             <h1 className="text-4xl font-black text-slate-900 tracking-tight mb-2">Join findNED</h1>
-            <p className="text-slate-500 font-medium">Create your secure student account to start reporting items.</p>
+            <p className="text-slate-500 font-medium">Create your secure student account using your roll number.</p>
           </div>
 
           {error && (
@@ -150,40 +154,35 @@ export default function Register() {
                   value={formData.rollNumber}
                   onChange={(e) => setFormData({ ...formData, rollNumber: e.target.value.toUpperCase() })}
                   className="w-full pl-12 pr-4 py-4 bg-white border border-slate-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all font-medium text-slate-700 shadow-sm"
-                  placeholder="SE-24015"
+                  placeholder="e.g. SE-24015"
                 />
               </div>
             </div>
 
-            <div className="space-y-2 md:col-span-2">
+            <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 ml-1">Department</label>
               <div className="relative group">
                 <School className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-primary transition-colors" />
-                <select
+                <input
+                  type="text"
                   required
                   value={formData.department}
                   onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                  className="w-full pl-12 pr-4 py-4 bg-white border border-slate-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all font-medium text-slate-700 shadow-sm appearance-none"
-                >
-                  <option value="">Select Department</option>
-                  <option value="CS">Computer Science</option>
-                  <option value="SE">Software Engineering</option>
-                  <option value="EE">Electrical Engineering</option>
-                  <option value="ME">Mechanical Engineering</option>
-                  <option value="Civil">Civil Engineering</option>
-                </select>
+                  className="w-full pl-12 pr-4 py-4 bg-white border border-slate-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all font-medium text-slate-700 shadow-sm transition-all"
+                  placeholder="Software Engineering"
+                />
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 ml-1">Password</label>
+              <label className="text-xs font-bold text-slate-500 ml-1">Security Key (Password)</label>
               <div className="relative group">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-primary transition-colors" />
                 <input
                   type="password"
                   required
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  value={formData.securityKey}
+                  onChange={(e) => setFormData({ ...formData, securityKey: e.target.value })}
                   className="w-full pl-12 pr-4 py-4 bg-white border border-slate-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all font-medium text-slate-700 shadow-sm"
                   placeholder="••••••••"
                 />
@@ -191,14 +190,14 @@ export default function Register() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 ml-1">Confirm Password</label>
+              <label className="text-xs font-bold text-slate-500 ml-1">Confirm Security Key</label>
               <div className="relative group">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-primary transition-colors" />
                 <input
                   type="password"
                   required
-                  value={formData.confirmPassword}
-                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                  value={formData.confirmKey}
+                  onChange={(e) => setFormData({ ...formData, confirmKey: e.target.value })}
                   className="w-full pl-12 pr-4 py-4 bg-white border border-slate-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all font-medium text-slate-700 shadow-sm"
                   placeholder="••••••••"
                 />

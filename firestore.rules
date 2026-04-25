@@ -1,0 +1,132 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Validation Helpers ---
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['name', 'role', 'status', 'createdAt', 'rollNumber', 'department']) &&
+             data.keys().size() >= 6 &&
+             data.name is string && data.name.size() <= 100 &&
+             data.rollNumber is string && data.rollNumber.size() <= 20 &&
+             data.department is string && data.department.size() <= 60 &&
+             data.role in ['student', 'admin'] &&
+             data.status in ['Active', 'Blocked'] &&
+             data.createdAt == request.time;
+    }
+
+    function isValidReport(data) {
+      return data.keys().hasAll(['userId', 'type', 'itemName', 'status', 'createdAt']) &&
+             data.userId == request.auth.uid &&
+             data.type in ['lost', 'found'] &&
+             data.itemName is string && data.itemName.size() <= 200 &&
+             data.status in ['Pending', 'Approved', 'Rejected', 'Matched'] &&
+             data.createdAt == request.time;
+    }
+
+    function isValidMatch(data) {
+      return data.keys().hasAll(['lostReportId', 'foundReportId', 'status', 'createdAt']) &&
+             exists(/databases/$(database)/documents/reports/$(data.lostReportId)) &&
+             exists(/databases/$(database)/documents/reports/$(data.foundReportId)) &&
+             data.status in ['Suggested', 'Confirmed'] &&
+             data.createdAt == request.time;
+    }
+
+    function isValidNotification(data) {
+      return data.keys().hasAll(['type', 'message', 'read', 'createdAt']) &&
+             data.type in ['flag', 'alert'] &&
+             data.message is string && data.message.size() <= 500 &&
+             data.read == false &&
+             data.createdAt == request.time;
+    }
+
+    // --- Collections ---
+
+    match /users/{userId} {
+      // Avoid recursion: check isOwner first
+      allow get: if isSignedIn() && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      
+      allow create: if isSignedIn() && isOwner(userId) && isValidUser(incoming()) && 
+                    (incoming().role == 'student' || (incoming().role == 'admin' && request.auth.token.email.endsWith('@cloud.neduet.edu.pk'))) && 
+                    incoming().status == 'Active';
+      
+      allow update: if isSignedIn() && (
+        isAdmin() || 
+        (isOwner(userId) && 
+         incoming().diff(existing()).affectedKeys().hasOnly(['name', 'department']) &&
+         incoming().name is string && incoming().name.size() <= 100)
+      );
+    }
+
+    match /reports/{reportId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn() && (resource.data.status != 'Rejected' || isOwner(resource.data.userId) || isAdmin());
+
+      allow create: if isSignedIn() && isValidId(reportId) && isValidReport(incoming());
+      
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        (isOwner(existing().userId) && 
+         existing().status == 'Pending' &&
+         incoming().diff(existing()).affectedKeys().hasOnly(['itemName', 'category', 'description', 'location', 'date', 'imageUrl']) &&
+         incoming().itemName is string && incoming().itemName.size() <= 200)
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    match /matches/{matchId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(matchId) && isValidMatch(incoming());
+      allow update: if isAdmin() && 
+                    incoming().diff(existing()).affectedKeys().hasOnly(['status']);
+      allow delete: if isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn() && isValidId(notificationId) && isValidNotification(incoming());
+      allow update: if isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['read']);
+    }
+  }
+}

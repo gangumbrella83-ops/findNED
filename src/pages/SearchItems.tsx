@@ -5,6 +5,9 @@ import { ReportCard } from '../components/ReportCard';
 import { ReportModal } from '../components/ReportModal';
 import { Report } from '../types';
 import { cn } from '../lib/utils';
+import { collection, onSnapshot, query, where, orderBy } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { handleFirestoreError, OperationType } from '../lib/firestoreUtils';
 
 export default function SearchItems() {
   const [reports, setReports] = useState<Report[]>([]);
@@ -16,20 +19,25 @@ export default function SearchItems() {
 
   const categories = ['All', 'Electronics', 'Syllabus/Books', 'Personal Items', 'Cards/Wallets', 'Keys', 'Clothing', 'Others'];
 
-  const fetchPublicReports = async () => {
-    try {
-      const res = await fetch('/api/reports/public');
-      const data = await res.json();
-      setReports(data.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchPublicReports();
+    // Only fetch non-rejected reports for public search
+    const q = query(
+      collection(db, 'reports'),
+      where('status', '!=', 'Rejected'),
+      orderBy('status'), // Needed because of Firestore inequality constraint on status
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Report);
+      setReports(data);
+      setIsLoading(false);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'reports');
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const filteredReports = reports.filter(r => {

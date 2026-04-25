@@ -1,34 +1,33 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X, Bell, LogOut, LayoutDashboard, Search, FileText, Users, Link as LinkIcon } from 'lucide-react';
-import { getAuthUser, logout } from '../lib/auth';
+import { useFirebase } from '../lib/FirebaseProvider';
 import { cn } from '../lib/utils';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { Notification } from '../types';
 
 export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const user = getAuthUser();
+  const { user, logout } = useFirebase();
   const navigate = useNavigate();
   const location = useLocation();
   const [unreadCount, setUnreadCount] = useState(0);
 
-  const fetchNotifications = async () => {
-    if (user?.role !== 'admin') return;
-    try {
-      const res = await fetch('/api/notifications', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-      const data = await res.json();
-      setUnreadCount(data.filter((n: any) => !n.read).length);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
   useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    if (user?.role !== 'admin') return;
+
+    const q = query(
+      collection(db, 'notifications'), 
+      where('read', '==', false)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setUnreadCount(snapshot.size);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   const adminLinks = [
     { label: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },

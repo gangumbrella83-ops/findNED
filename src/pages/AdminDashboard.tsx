@@ -13,6 +13,9 @@ import { Report, Match, User } from '../types';
 import { StatusBadge } from '../components/StatusBadge';
 import { formatDate, cn } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { handleFirestoreError, OperationType } from '../lib/firestoreUtils';
 
 export default function AdminDashboard() {
   const [reports, setReports] = useState<Report[]>([]);
@@ -22,26 +25,44 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [repRes, matchRes, userRes] = await Promise.all([
-          fetch('/api/reports', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } }),
-          fetch('/api/matches', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } }),
-          fetch('/api/users', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } }),
-        ]);
-        const [repData, matchData, userData] = await Promise.all([
-          repRes.json(), matchRes.json(), userRes.json()
-        ]);
-        setReports(repData);
-        setMatches(matchData);
-        setUsers(userData);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setIsLoading(false);
-      }
+    setIsLoading(true);
+
+    const unsubReports = onSnapshot(
+      query(collection(db, 'reports'), orderBy('createdAt', 'desc')),
+      (snapshot) => {
+        setReports(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Report));
+        if (isLoading) checkLoading();
+      },
+      (err) => handleFirestoreError(err, OperationType.LIST, 'reports')
+    );
+
+    const unsubMatches = onSnapshot(
+      collection(db, 'matches'),
+      (snapshot) => {
+        setMatches(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Match));
+        if (isLoading) checkLoading();
+      },
+      (err) => handleFirestoreError(err, OperationType.LIST, 'matches')
+    );
+
+    const unsubUsers = onSnapshot(
+      collection(db, 'users'),
+      (snapshot) => {
+        setUsers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as User));
+        if (isLoading) checkLoading();
+      },
+      (err) => handleFirestoreError(err, OperationType.LIST, 'users')
+    );
+
+    const checkLoading = () => {
+      setIsLoading(false);
     };
-    fetchData();
+
+    return () => {
+      unsubReports();
+      unsubMatches();
+      unsubUsers();
+    };
   }, []);
 
   const stats = [

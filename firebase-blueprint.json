@@ -1,0 +1,84 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Represents a student or admin in the system",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Full name" },
+        "rollNumber": { "type": "string", "description": "NEDUET Roll Number" },
+        "department": { "type": "string", "description": "Academic department" },
+        "role": { "type": "string", "enum": ["student", "admin"], "description": "System role" },
+        "email": { "type": "string", "format": "email", "description": "Email address" },
+        "status": { "type": "string", "enum": ["Active", "Blocked"], "description": "Account status" },
+        "blockReason": { "type": "string", "description": "Reason for blocking" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "role", "status", "createdAt"]
+    },
+    "Report": {
+      "title": "Report",
+      "description": "Lost or found item report",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "ID of the user who created the report" },
+        "userName": { "type": "string", "description": "Name of the reporter" },
+        "type": { "type": "string", "enum": ["lost", "found"] },
+        "itemName": { "type": "string" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "date": { "type": "string" },
+        "location": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "status": { "type": "string", "enum": ["Pending", "Approved", "Rejected", "Matched"] },
+        "rejectionReason": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "type", "itemName", "status", "createdAt"]
+    },
+    "Match": {
+      "title": "Match",
+      "description": "A potential or confirmed match between lost and found items",
+      "type": "object",
+      "properties": {
+        "lostReportId": { "type": "string" },
+        "foundReportId": { "type": "string" },
+        "status": { "type": "string", "enum": ["Suggested", "Confirmed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["lostReportId", "foundReportId", "status", "createdAt"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "System alert or user flag",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["flag", "alert"] },
+        "reportId": { "type": "string" },
+        "fromUserId": { "type": "string" },
+        "message": { "type": "string" },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["type", "message", "read", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/reports/{reportId}": {
+      "schema": "Report",
+      "description": "Lost and found reports"
+    },
+    "/matches/{matchId}": {
+      "schema": "Match",
+      "description": "Report matches"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "System notifications"
+    }
+  }
+}
