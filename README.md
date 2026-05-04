@@ -1,20 +1,79 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+FindNed – Lost and Found Management System
+Overview
 
-# Run and deploy your AI Studio app
+FindNed is a role-based, web-enabled Lost and Found Management System developed for students and administrative staff of NED University of Engineering and Technology (NEDUET). It provides a centralized platform to report, track, and recover lost items across campus.
 
-This contains everything you need to run your app locally.
+Problem Statement
 
-View your app in AI Studio: https://ai.studio/apps/033cbc3e-1339-4586-ae28-ca2f5d7ef009
+NEDUET lacks a structured system for managing lost and found items. Existing methods are informal, untracked, and inefficient, making item recovery difficult. FindNed addresses this by digitizing and organizing the entire process.
 
-## Run Locally
+Objectives
+Provide a centralized lost and found platform
+Improve item recovery efficiency
+Ensure transparency and accountability
+Reduce reliance on manual processes
+Tech Stack
 
-**Prerequisites:**  Node.js
+Frontend:
 
+React 18
+Vite
+Tailwind CSS
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+Backend / Database:
+
+Firebase
+Cloud Firestore
+
+Deployment:
+
+GitHub Pages
+Features
+
+User:
+
+Register and login
+Report lost items
+Report found items
+Browse and search listings
+Claim items
+
+Admin:
+
+Manage users
+Approve or delete posts
+Monitor system activity
+Update item status
+Non-Functional Requirements
+Responsive user interface
+Secure authentication
+Scalable architecture
+High availability via Firebase
+Setup
+git clone https://github.com/your-username/findned.git
+cd findned
+npm install
+npm run dev
+Firebase Configuration
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_BUCKET",
+  messagingSenderId: "YOUR_ID",
+  appId: "YOUR_APP_ID"
+};
+Deployment
+npm run build
+npx gh-pages -d dist
+Assumptions
+Users belong to NEDUET
+Internet access is available
+Firebase services are operational
+Constraints
+Limited to university users
+Dependent on Firebase services
+No offline support
+License
+
+This project is developed for academic purposes.
